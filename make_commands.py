@@ -16,7 +16,7 @@ commands = sorted([
     Command("iowb", "cmd_iowb"),
     Command("ioww", "cmd_ioww"),
     Command("iowd", "cmd_iowd")
-    ], key=lambda cmd: cmd.name)
+    ], key=lambda cmd: cmd.name.encode("ascii"))
 
 with open("src/commands.c", mode="w", encoding="utf-8", newline="\n") as fd:
     fd.write(f"""#include \"Command.h\"
