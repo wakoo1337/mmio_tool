@@ -16,9 +16,9 @@ int main(int argc, char **argv) {
 		puts("You must be root to use mmio_tool");
 		return 1;
 	};
-	int memfd;
-	if (-1 == (memfd = open("/dev/mem", O_RDWR))) {
-		perror("open(/dev/mem)");
+	int portfd;
+	if (-1 == (portfd = open("/dev/port", O_RDWR))) {
+		perror("open(/dev/port)");
 		return 1;
 	};
 	while (true) {
@@ -30,12 +30,12 @@ int main(int argc, char **argv) {
 		if (-1 == getline(&full_command, &sz, stdin)) {
 			if (feof(stdin)) {
 				free(full_command);
-				close(memfd);
+				close(portfd);
 				return 0;
 			} else if (ferror(stdin)) {
 				perror("getline");
 				free(full_command);
-				close(memfd);
+				close(portfd);
 				return 1;
 			};
 		};
@@ -44,13 +44,13 @@ int main(int argc, char **argv) {
 			struct Command stub = (struct Command) { .name = command_name, .function = NULL};
 			const struct Command *found = bsearch(&stub, commands, commands_count, sizeof commands[0], &command_searcher);
 			if (found) {
-				found->function(memfd, save);
+				found->function(portfd, &save);
 			} else {
 				puts("Wrong command");
 			};
 		};
 		free(full_command);
 	};
-	close(memfd);
+	close(portfd);
 	return 0;
 };

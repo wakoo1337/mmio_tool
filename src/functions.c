@@ -10,10 +10,11 @@
 #include "separators.h"
 
 #include "functions.h"
-void cmd_exit(int memfd, char *save) {
+void cmd_exit(int portfd, char **save) {
+	close(portfd);
 	exit(0);
 };
-void cmd_help(int memfd, char *save) {
+void cmd_help(int portfd, char **save) {
 	puts("Available commands: \n\
   exit              — Exit program\n\
   help              — View this help\n\
@@ -24,122 +25,127 @@ void cmd_help(int memfd, char *save) {
   ioww address data — Write word (16 bits)\n\
   iowd address data — Write double word (32 bits)");
 };
-void *map_view(int memfd, intptr_t address, unsigned int count, int protection, unsigned int *offset_out, unsigned int *length_out) {
-	intptr_t page = getpagesize();
-	intptr_t aligned = address & ~(page-1);
-	size_t length = (address & (page-1)) + count;
-	void *mapping;
-	mapping = mmap(NULL, length, protection, MAP_SHARED, memfd, aligned);
-	if (MAP_FAILED == mapping) {
-		perror("mmap");
-		return NULL;
+bool read_bytes(int portfd, off_t offset, void *out, unsigned int count) {
+	if (-1 == lseek(portfd, offset, SEEK_SET)) {
+		perror("lseek");
+		return true;
 	};
-	*offset_out = address & (page-1);
-	*length_out = length;
-	return mapping;
+	if (count != read(portfd, out, count)) {
+		perror("read");
+		return true;
+	};
+	return false;
 };
-bool read_bytes(int memfd, char *save, unsigned char *out, unsigned int count) {
+bool write_bytes(int portfd, off_t offset, void *in, unsigned int count) {
+	if (-1 == lseek(portfd, offset, SEEK_SET)) {
+		perror("lseek");
+		return true;
+	};
+	if (count != write(portfd, in, count)) {
+		perror("write");
+		return true;
+	};
+	return false;
+};
+bool query_address(char **save, off_t *address) {
 	char *address_txt;
-	address_txt = strtok_r(NULL, separators, &save);
+	address_txt = strtok_r(NULL, separators, save);
 	if (NULL == address_txt) {
-		puts("Specify address");
 		return true;
 	};
 	char *endptr;
-	intptr_t address = strtoull(address_txt, &endptr, 0); // unsigned long long is 64-bit, so it's possible to keep pointer there
-	if (endptr == address_txt) {
-		puts("Invalid address specification");
-		return true;
-	};
-	unsigned int offset, length;
-	unsigned char *map;
-	map = map_view(memfd, address, count, PROT_READ, &offset, &length);
-	if (map) {
-		memcpy(out, map + offset, count);
-		munmap(map, length);
-		return false;
-	};
-	return true;
+	*address = (off_t) strtoull(address_txt, &endptr, 0);
+	return endptr == address_txt;
 };
-bool write_bytes(int memfd, char *save, unsigned int count) {
-	assert((count == 1) || (count == 2) || (count == 4));
-	char *address_txt;
-	address_txt = strtok_r(NULL, separators, &save);
-	if (NULL == address_txt) {
-		puts("Specify address");
+bool query_argument(char **save, uint32_t *argument) {
+	char *argument_txt;
+	argument_txt = strtok_r(NULL, separators, save);
+	if (NULL == argument_txt) {
 		return true;
 	};
 	char *endptr;
-	intptr_t address = strtoull(address_txt, &endptr, 0);
-	if (endptr == address_txt) {
-		puts("Invalid address specification");
-		return true;
-	};
-	char *value_txt;
-	value_txt = strtok_r(NULL, separators, &save);
-	if (NULL == value_txt) {
-		puts("Specify value");
-		return true;
-	};
-	uint32_t value = strtoul(value_txt, &endptr, 0);
-	if (endptr == value_txt) {
-		puts("Invalid value specification");
-		return true;
-	};
-	unsigned int offset, length;
-	unsigned char *map;
-	map = map_view(memfd, address, count, PROT_WRITE, &offset, &length);
-	if (map) {
-		unsigned char c;
-		uint16_t s;
-		uint32_t w;
-		c = value;
-		s = value;
-		w = value;
-		if (count == 1) memcpy(map + offset, &c, count);
-		else if (count == 2) memcpy(map + offset, &s, count);
-		else if (count == 4) memcpy(map + offset, &w, count);
-		munmap(map, length);
-		return false;
-	};
-	return true;
+	*argument = (uint32_t) strtoull(argument_txt, &endptr, 0);
+	return endptr == argument_txt;
 };
-void cmd_iorb(int memfd, char *save) {
+void cmd_iorb(int portfd, char **save) {
+	off_t offset;
+	if (query_address(save, &offset)) {
+		puts("Wrong or absent address specification");
+		return;
+	};
 	unsigned char c;
-	if (!read_bytes(memfd, save, &c, 1)) {
+	if (!read_bytes(portfd, offset, &c, sizeof c)) {
 		printf("readed byte: %02hhx\n", c);
 	};
 };
-void cmd_iorw(int memfd, char *save) {
-	union {
-		uint16_t u;
-		unsigned char c[2];
-	} u;
-	if (!read_bytes(memfd, save, u.c, 2)) {
-		printf("readed word: %04hx\n", u.u);
+void cmd_iorw(int portfd, char **save) {
+	off_t offset;
+	if (query_address(save, &offset)) {
+		puts("Wrong or absent address specification");
+		return;
+	};
+	uint16_t u;
+	if (!read_bytes(portfd, offset, &u, sizeof u)) {
+		printf("readed word: %04hx\n", u);
 	};
 };
-void cmd_iord(int memfd, char *save) {
-	union {
-		uint32_t u;
-		unsigned char c[4];
-	} u;
-	if (!read_bytes(memfd, save, u.c, 4)) {
-		printf("readed double word: %08x\n", u.u);
+void cmd_iord(int portfd, char **save) {
+	off_t offset;
+	if (query_address(save, &offset)) {
+		puts("Wrong or absent address specification");
+		return;
+	};
+	uint32_t u;
+	if (!read_bytes(portfd, offset, &u, sizeof u)) {
+		printf("readed double word: %08x\n", u);
 	};
 };
-void cmd_iowb(int memfd, char *save) {
-	if (!write_bytes(memfd, save, 1)) {
+void cmd_iowb(int portfd, char **save) {
+	off_t offset;
+	if (query_address(save, &offset)) {
+		puts("Wrong or absent address specification");
+		return;
+	};
+	uint32_t u32;
+	if (query_argument(save, &u32)) {
+		puts("Wrong or absent argument");
+		return;
+	};
+	uint8_t u8;
+	u8 = u32;
+	if (!write_bytes(portfd, offset, &u8, sizeof u8)) {
 		puts("wrote byte successfully");
 	};
 };
-void cmd_ioww(int memfd, char *save) {
-	if (!write_bytes(memfd, save, 2)) {
-		puts("wrote word successfully");
+void cmd_ioww(int portfd, char **save) {
+	off_t offset;
+	if (query_address(save, &offset)) {
+		puts("Wrong or absent address specification");
+		return;
+	};
+	uint32_t u32;
+	if (query_argument(save, &u32)) {
+		puts("Wrong or absent argument");
+		return;
+	};
+	uint16_t u16;
+	u16 = u32;
+	if (!write_bytes(portfd, offset, &u16, sizeof u16)) {
+		puts("wrote byte successfully");
 	};
 };
-void cmd_iowd(int memfd, char *save) {
-	if (!write_bytes(memfd, save, 4)) {
-		puts("wrote double word successfully");
+void cmd_iowd(int portfd, char **save) {
+	off_t offset;
+	if (query_address(save, &offset)) {
+		puts("Wrong or absent address specification");
+		return;
+	};
+	uint32_t u32;
+	if (query_argument(save, &u32)) {
+		puts("Wrong or absent argument");
+		return;
+	};
+	if (!write_bytes(portfd, offset, &u32, sizeof u32)) {
+		puts("wrote byte successfully");
 	};
 };
