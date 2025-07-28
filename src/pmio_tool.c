@@ -22,8 +22,10 @@ int main(int argc, char **argv) {
 		return 1;
 	};
 	while (true) {
-		char *full_command, *command_name, *save;
-		full_command = readline("> ");
+		char full_command[2048], *command_name, *save;
+		fputs("> ", stdout);
+		fflush(stdout);
+		fgets(full_command, sizeof full_command, stdin);
 		command_name = strtok_r(full_command, separators, &save);
 		if (command_name) {
 			struct Command stub = (struct Command) { .name = command_name, .function = NULL};
@@ -34,7 +36,6 @@ int main(int argc, char **argv) {
 				puts("Wrong command");
 			};
 		};
-		free(full_command);
 	};
 	close(memfd);
 	return 0;

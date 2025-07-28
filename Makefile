@@ -1,12 +1,10 @@
-READLINE_LIBS := $$(pkg-config --libs readline) 
-READLINE_CFLAGS := $$(pkg-config --cflags readline)
 CFLAGS := -O0 -g -Wall -std=gnu11
 .PHONY: all clean
-all: bin/mmio_tool
-bin/mmio_tool: bin/mmio_tool.o bin/commands.o bin/functions.o bin/separators.o
-	$(CC) $(CFLAGS) $(READLINE_CFLAGS) -o bin/mmio_tool bin/mmio_tool.o bin/commands.o bin/functions.o bin/separators.o $(READLINE_LIBS)
-bin/mmio_tool.o: src/mmio_tool.c src/Command.h src/commands.h src/separators.h
-	$(CC) $(CFLAGS) -c -o bin/mmio_tool.o src/mmio_tool.c
+all: bin/pmio_tool
+bin/pmio_tool: bin/pmio_tool.o bin/commands.o bin/functions.o bin/separators.o
+	$(CC) $(CFLAGS) -o bin/pmio_tool bin/pmio_tool.o bin/commands.o bin/functions.o bin/separators.o
+bin/pmio_tool.o: src/pmio_tool.c src/Command.h src/commands.h src/separators.h
+	$(CC) $(CFLAGS) -c -o bin/pmio_tool.o src/pmio_tool.c
 bin/commands.o: src/commands.c src/Command.h src/commands.h src/functions.h
 	$(CC) $(CFLAGS) -c -o bin/commands.o src/commands.c
 src/commands.c: make_commands.py
