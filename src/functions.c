@@ -131,7 +131,7 @@ void cmd_ioww(int portfd, char **save) {
 	uint16_t u16;
 	u16 = u32;
 	if (!write_bytes(portfd, offset, &u16, sizeof u16)) {
-		puts("wrote byte successfully");
+		puts("wrote word successfully");
 	};
 };
 void cmd_iowd(int portfd, char **save) {
@@ -146,6 +146,6 @@ void cmd_iowd(int portfd, char **save) {
 		return;
 	};
 	if (!write_bytes(portfd, offset, &u32, sizeof u32)) {
-		puts("wrote byte successfully");
+		puts("wrote double word successfully");
 	};
 };
