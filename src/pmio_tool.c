@@ -22,10 +22,23 @@ int main(int argc, char **argv) {
 		return 1;
 	};
 	while (true) {
-		char full_command[2048], *command_name, *save;
+		char *full_command, *command_name, *save;
 		fputs("> ", stdout);
 		fflush(stdout);
-		fgets(full_command, sizeof full_command, stdin);
+		full_command = NULL;
+		size_t sz;
+		if (-1 == getline(&full_command, &sz, stdin)) {
+			if (feof(stdin)) {
+				free(full_command);
+				close(memfd);
+				return 0;
+			} else if (ferror(stdin)) {
+				perror("getline");
+				free(full_command);
+				close(memfd);
+				return 1;
+			};
+		};
 		command_name = strtok_r(full_command, separators, &save);
 		if (command_name) {
 			struct Command stub = (struct Command) { .name = command_name, .function = NULL};
@@ -36,6 +49,7 @@ int main(int argc, char **argv) {
 				puts("Wrong command");
 			};
 		};
+		free(full_command);
 	};
 	close(memfd);
 	return 0;

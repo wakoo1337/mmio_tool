@@ -22,7 +22,7 @@ void cmd_help(int memfd, char *save) {
   iord address      — Read double word (32 bits)\n\
   iowb address data — Write byte (8 bits)\n\
   ioww address data — Write word (16 bits)\n\
-  iowd address data — Write double word (32 bits)\n");
+  iowd address data — Write double word (32 bits)");
 };
 void *map_view(int memfd, intptr_t address, unsigned int count, int protection, unsigned int *offset_out, unsigned int *length_out) {
 	intptr_t page = getpagesize();
@@ -107,7 +107,7 @@ bool write_bytes(int memfd, char *save, unsigned int count) {
 void cmd_iorb(int memfd, char *save) {
 	unsigned char c;
 	if (!read_bytes(memfd, save, &c, 1)) {
-		printf("readed byte: %hhx\n:", c);
+		printf("readed byte: %02hhx\n", c);
 	};
 };
 void cmd_iorw(int memfd, char *save) {
@@ -116,7 +116,7 @@ void cmd_iorw(int memfd, char *save) {
 		unsigned char c[2];
 	} u;
 	if (!read_bytes(memfd, save, u.c, 2)) {
-		printf("readed word: %hx\n", u.u);
+		printf("readed word: %04hx\n", u.u);
 	};
 };
 void cmd_iord(int memfd, char *save) {
@@ -125,7 +125,7 @@ void cmd_iord(int memfd, char *save) {
 		unsigned char c[4];
 	} u;
 	if (!read_bytes(memfd, save, u.c, 4)) {
-		printf("readed double word: %x\n", u.u);
+		printf("readed double word: %08x\n", u.u);
 	};
 };
 void cmd_iowb(int memfd, char *save) {
@@ -140,6 +140,6 @@ void cmd_ioww(int memfd, char *save) {
 };
 void cmd_iowd(int memfd, char *save) {
 	if (!write_bytes(memfd, save, 4)) {
-		puts("wrote double successfully");
+		puts("wrote double word successfully");
 	};
 };
